@@ -1,118 +1,43 @@
-# Stellar Notes DApp
+# offer_letter_escrow
 
-**Stellar Notes DApp** - Blockchain-Based Decentralized Note-Taking System
+## Project Title
+offer_letter_escrow
 
 ## Project Description
+`offer_letter_escrow` is a Soroban smart contract that turns a signed job offer letter into a self-custody escrow on the Stellar network. The employer locks the candidate's signing bonus inside the contract the moment the offer is funded, and the funds can only move to one of two outcomes: the candidate (when they actually show up for day one) or back to the employer (when they don't). Every state transition is signed by the right party, timestamped by the ledger, and emitted as a public event, so neither side can quietly walk away with the other side's money.
 
-Stellar Notes DApp is a decentralized smart contract solution built on the Stellar blockchain using Soroban SDK. It provides a secure, immutable platform for managing personal notes directly on the blockchain. The contract ensures that your data is stored transparently and is only manageable through predefined smart contract functions, eliminating reliance on centralized database providers.
-
-The system allows users to create, view, and delete notes, leveraging the efficiency and security of the Stellar network. Each note is uniquely identified and stored within the contract's instance storage, ensuring data persistence and reliability.
+The whole flow is small on purpose — one `fund_offer`, one `accept`, one `report_first_day`, and a single `release` or `refund` to close it out — so a candidate or an HR manager can read the contract, understand it in five minutes, and trust it without trusting a third party.
 
 ## Project Vision
-
-Our vision is to revolutionize personal productivity in the digital age by:
-
-- **Decentralizing Data**: Moving note-taking from centralized servers to a global, distributed blockchain
-- **Ensuring Ownership**: Empowering users to have complete control and ownership over their digital thoughts and information
-- **Guaranteeing Immutability**: Providing a permanent, tamper-proof record of notes that cannot be altered or deleted by third parties
-- **Enhancing Privacy**: Leveraging blockchain security to protect personal information from unauthorized access
-- **Building Trustless Systems**: Creating a platform where data integrity is guaranteed by code, not by company promises
-
-We envision a future where digital information is truly personal and sovereign, empowering individuals with complete autonomy over their digital assets.
+The vision is to make every job-offer letter a small, transparent financial agreement on-chain. We want to give candidates the confidence to relocate for a new role and give employers the assurance that a no-show candidate will not silently walk away with a bonus. In the long term, `offer_letter_escrow` can become the trust layer for global remote hiring, contractor onboarding, internship placements, university recruitment, and even apprenticeship programs — anywhere that a written offer can benefit from a programmable, neutral, and auditable payment escrow.
 
 ## Key Features
+- **Deterministic lifecycle escrow** — every offer moves through a fixed `funded -> accepted -> reported -> released | refunded` state machine, with each transition gated by `require_auth` for the correct party.
+- **Split-protected signing bonus** — the bonus is locked in the contract at `fund_offer`, the candidate commits with `accept`, and the funds can only be released after the employer confirms first-day attendance, or refunded on a no-show.
+- **On-chain evidence trail** — the first-day report carries a short `evidence_hash` (e.g. a SHA-256 of a badge scan, an HR system record id, or a hash of an attestation URI) so the off-chain proof of attendance is auditable directly from the ledger.
+- **Strict authorization** — `require_auth` is enforced on the employer for `fund_offer`, `report_first_day`, `release`, and `refund`, and on the candidate for `accept`, so no one can mutate an offer they do not own.
+- **Public status view** — `get_status` returns a single integer status code (0–5) for any `offer_id`, so a frontend or audit tool can render the current state of the offer without re-deriving the lifecycle.
+- **Event-driven integration** — every transition publishes a topic+data event (`offer_funded`, `offer_accepted`, `first_day_reported`, `bonus_released`, `bonus_refunded`) so an off-chain relayer, indexer, or HR dashboard can subscribe to the lifecycle.
 
-### 1. **Simple Note Creation**
+## Contract
 
-- Create notes with just one function call
-- Specify title and content for each note
-- Automated ID generation for unique identification
-- Persistent storage on the Stellar blockchain
-
-### 2. **Efficient Data Retrieval**
-
-- Fetch all stored notes in a single call
-- Structured data representation for easy frontend integration
-- Quick access to your entire note collection
-- Real-time synchronization with the blockchain state
-
-### 3. **Secure Deletion**
-
-- Remove specific notes using their unique IDs
-- Permanent removal from the contract storage
-- Clean and efficient storage management
-- Immediate update of the note list after deletion
-
-### 4. **Transparency and Security**
-
-- View all note activities on the blockchain
-- Blockchain-based verification of all storage actions
-- Immutable records of note creation and deletion
-- Protected against unauthorized modifications
-
-### 5. **Stellar Network Integration**
-
-- Leverages the high speed and low cost of Stellar
-- Built using the modern Soroban Smart Contract SDK
-- Scalable architecture for growing note collections
-- Interoperable with other Stellar-based services
-
-## Contract Details
-
-- Contract Address: CBLU4IUASQ4WUMOXBFLZRSBBLILGOH33GS4LUPKFBCCCMJCDQNMF7G2M
-  (Screenshot has been removed)
+- **Network:** Stellar Testnet (Public)
+- **Scope:** work dApp — see `contracts/offer_letter_escrow/src/lib.rs` for the full offer_letter_escrow business logic.
+- **Functions exposed:** see `Key Features` above and the `pub fn` list in `lib.rs`.
+- **Contract ID:** `CD4LHGLFKQYA6EUL645VWCEJ2GARLMLHUTCIZNRABW5UQ6KH5JWJBBGI`
+- **Explorer template:** `https://stellar.expert/explorer/testnet/tx/b7cb8b7ad3eb301d833bc27fda8a66352ed3c4662dd2a167830a23272c1b8ab1`
 
 ## Future Scope
+- **Real asset settlement** — wire `release` and `refund` to a Stellar asset contract (USDC or a custom payroll token) so the bonus is actually moved on-chain instead of just signaled through events.
+- **Time-locked auto-refund** — add a `start_date` ledger timestamp to each offer so the contract can auto-refund if the candidate never reports by a deadline, removing the need for the employer to actively call `refund`.
+- **Dispute window** — give the candidate a short challenge window after `report_first_day` to dispute the report before funds are released, with a simple employer/candidate/arbiter resolution path.
+- **Multi-party offers** — extend `Offer` to support co-signers (e.g. a recruitment agency that paid a referral fee) and split the bonus across multiple payouts in one release.
+- **Frontend dApp** — build a minimal web UI using Freighter that lets a candidate accept an offer and an employer fund / report / release / refund with one click, reading status via `get_status`.
+- **Indexed event feed** — index the contract's events (`offer_funded`, `offer_accepted`, `bonus_released`, `bonus_refunded`) into a small dashboard so HR teams can watch the status of every offer in real time.
+- **Testnet end-to-end demo** — deploy to Stellar Testnet, run a full `fund -> accept -> report -> release` flow, and capture the contract ID plus the invoke transaction hash for the README.
 
-### Short-Term Enhancements
+## Profile
 
-1. **Note Encryption**: Support for end-to-end encryption of note content for enhanced privacy
-2. **Category Management**: Add tags and categories to organize notes efficiently
-3. **Rich Text Support**: Extend support beyond plain text to include Markdown and formatted content
-4. **Search Functionality**: Implement advanced search filters for large note collections
-
-### Medium-Term Development
-
-5. **Collaborative Notes**: Implement multi-signature requirements for shared or collaborative note-taking
-   - Shared access for multiple addresses
-   - Permission-based editing and viewing
-   - Version history tracking
-6. **Notification System**: Off-chain bridge to alert users of new updates or shared notes
-7. **Asset Attachment**: Capability to attach digital assets or tokens to specific notes
-8. **Inter-Contract Integration**: Allow other smart contracts to interact with and store data in the notes contract
-
-### Long-Term Vision
-
-9. **Cross-Chain Synchronization**: Extend note storage to multiple blockchain networks
-10. **Decentralized UI Hosting**: Host the frontend on IPFS or similar decentralized platforms
-11. **AI-Powered Summarization**: Optional integration with AI to help users summarize their notes
-12. **Privacy Layers**: Implement zero-knowledge proofs for completely private note content
-13. **DAO Governance**: Community-driven protocol improvements and feature prioritization
-14. **Identity Management**: Integration with decentralized identity (DID) systems for user management
-
-### Enterprise Features
-
-15. **Corporate Documentation**: Adapt the system for secure corporate record-keeping
-16. **Immutable Logging**: Create time-locked logs for audit purposes
-17. **Automated Reporting**: Automatic note triggers for periodic reporting
-18. **Multi-Language Support**: Expand accessibility with internationalization
-
----
-
-## Technical Requirements
-
-- Soroban SDK
-- Rust programming language
-- Stellar blockchain network
-
-## Getting Started
-
-Deploy the smart contract to Stellar's Soroban network and interact with it using the three main functions:
-
-- `create_note()` - Create a new note with a title and content
-- `get_notes()` - Retrieve all stored notes from the contract
-- `delete_note()` - Remove a specific note by its ID
-
----
-
-**Stellar Notes DApp** - Securing Your Thoughts on the Blockchain
+- **Name:** <!-- Fill github name -->
+- **Project:** `offer_letter_escrow` (work)
+- **Built with:** Soroban SDK 25, Rust, Stellar Testnet
